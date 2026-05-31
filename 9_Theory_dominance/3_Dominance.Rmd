@@ -1,0 +1,139 @@
+---
+title: "Theory: Dominance Effects, Part 2"
+output: html_notebook
+---
+
+This document will demonstrate the quantitative genetic of heterosis and show heterosis in an example maize simulation.
+
+## Quantitative genetics of heterosis
+
+The below simulation will show different types of heterosis presented in the Labroo et. al. figure.
+
+```{r}
+library(AlphaSimR)
+
+# Adding a split in coalescent simulation to model 2 populations that
+# diverge 100 generations ago
+founderPop = runMacs(nInd=200, nChr=10, segSites=1000, 
+                     split=100)
+
+SP = SimParam$
+  new(founderPop[1:100])$
+  addTraitAD(1000, meanDD=0.2, varDD=0.1)
+
+# Splitting the two populations in founderPop into two separate populations
+A = newPop(founderPop[1:100])
+B = newPop(founderPop[101:200])
+
+# Creating fully inbred versions of the two populations
+A_inbred = makeDH(A)
+B_inbred = makeDH(B)
+
+# Creating an F1 hybrids between populations A and B
+F1 = hybridCross(A, B)
+
+# Creating F1 hybrids using the inbred populations
+F1_inbred = hybridCross(A_inbred, B_inbred)
+
+# Creating an F2 population by random mating the F1s
+F2 = randCross(F1, nCrosses=10000)
+
+# Examine the means of the initial populations
+meanG(A)
+meanG(B)
+
+# Examing the means of the inbred populations
+meanG(A_inbred)
+meanG(B_inbred)
+
+# Examine the means of the F1 populations
+# They should be approximately equivalent
+meanG(F1)
+meanG(F1_inbred)
+
+# Examining mean of F2
+meanG(F2)
+
+# Panmictic Midparent Heterosis
+meanG(F1) - (meanG(A)+meanG(B))/2
+
+# Inbred Midparent Heterosis
+meanG(F1) - (meanG(A_inbred)+meanG(B_inbred))/2
+
+# Baseline Heterosis
+(meanG(A)+meanG(B))/2 - (meanG(A_inbred)+meanG(B_inbred))/2
+
+# F2 Heterosis (about half of panmictic midparent heterosis)
+meanG(F2) - (meanG(A)+meanG(B))/2
+
+
+## Extra not in heterosis figure
+
+# Create F2 by selfing F1
+F2_self = self(F1)
+
+# Selfing removes half of inbred midparent heterosis
+meanG(F2_self) - (meanG(A_inbred)+meanG(B_inbred))/2
+
+```
+
+## Maize example
+
+The below script simulates a maize population using parameters determined by after tuning. It will also show the correlation between per se and testcross performance.
+
+```{r}
+founderPop = runMacs(nInd=200, nChr=10, segSites=300, 
+                     split=100, species="MAIZE", inbred=TRUE)
+
+SP = SimParam$
+  new(founderPop[1:100])$
+  addTraitAD(300, 
+             mean=70, # Bushels per acre 
+             var=20, # Inbred variance
+             meanDD=0.92, 
+             varDD=0.3)$
+  setVarE(H2=1)
+
+# Create inbred populations
+A = newPop(founderPop[1:100])
+B = newPop(founderPop[101:200])
+
+# Create all possible hybrids
+F1 = hybridCross(A, B)
+
+# Examine means of populations
+meanG(A)
+meanG(B)
+meanG(F1)
+
+# Examine variances
+varG(A)
+varG(B)
+varG(F1)
+
+# Calculating GCA using built-in functions and measuring
+# GCA - per se correlation
+GCA = calcGCA(F1, use="gv")
+
+head(GCA$GCAf)
+
+cor(GCA$GCAf[,2], gv(A))
+
+cor(GCA$GCAm[,2], gv(B))
+
+# Testcross with 1 tester
+
+A = setPhenoGCA(A, testers=B[1])
+B = setPhenoGCA(B, tester=A[1])
+
+cor(GCA$GCAf[,2], pheno(A))
+cor(GCA$GCAm[,2], pheno(B))
+
+# Testcross with 3 testers
+
+A = setPhenoGCA(A, testers=B[1:3])
+B = setPhenoGCA(B, tester=A[1:3])
+
+cor(GCA$GCAf[,2], pheno(A))
+cor(GCA$GCAm[,2], pheno(B))
+```

@@ -1,0 +1,156 @@
+---
+title: "Theory: Genetic maps and recombination"
+output: html_notebook
+---
+
+This document will show the relationship between the Haldane and Kosambi mapping functions with respect to recombination rate and genetic distance. It will then show how each function is represented using the gamma model for recombination. Finally, it will show how recombination parameters in AlphaSimR.
+
+## Haldane function vs Kosambi function
+
+```{r}
+# Haldane's function to convert genetic distance (Morgans) to 
+# recombination rate.
+calcRate_Haldane = function(d){
+  (1 - exp(-2*d)) / 2
+}
+
+# Haldane's function to convert recombination rate to 
+# genetic distance (Morgans).
+calcDist_Haldane = function(r){
+  -log(1 - 2*r) / 2
+}
+
+# Kosambi's function to convert genetic distance (Morgans) to 
+# recombination rate.
+calcRate_Kosambi = function(d){
+  (1 - exp(-4*d)) / (2 * (1 + exp(-4*d)))
+}
+
+# Kosambi's function to convert recombination rate to 
+# genetic distance (Morgans).
+calcDist_Kosambi = function(r){
+  log( (1 + 2*r) / (1 - 2*r) ) / 4
+}
+
+
+distance = seq(0, 1, length.out=100)
+rateHaldane = calcRate_Haldane(distance)
+rateKosambi = calcRate_Kosambi(distance)
+
+plot(distance, rateKosambi, type="l",
+     xlab="Genetic Distance (Morgans)",
+     ylab="Recombination Rate", 
+     col="red")
+lines(distance, rateHaldane)
+
+
+rate = seq(0, 0.5, length.out=100)
+distHaldane = calcDist_Haldane(rate)
+distKosambi = calcDist_Kosambi(rate)
+
+plot(rate, distHaldane, type="l",
+     xlab="Recombination Rate",
+     ylab="Genetic Distance (Morgans)"
+     )
+lines(rate, distKosambi, col="red")
+
+```
+
+## Gamma model for recombination
+
+```{r}
+# Function to sample recombination positions for a 
+# chromosome with 1 Morgan genetic length using the 
+# gamma model with a variable interference parameter (v).
+sampleRecomb = function(v){
+  # Sample deviates from a gamma distribution
+  x = rgamma(n=50, shape=v, rate=2*v)
+  
+  # Convert deviates to map positions
+  # Subtracting by 10 to produce a burn-in to avoid too 
+  # few recombinations at the beginning of the chromosome
+  pos = cumsum(x) - 10
+  
+  # Trimming positions to only those within the chromosome
+  # Best practice would be to check that at least one position
+  # is greater than 1 and sample more deviates if not.
+  pos = pos[pos>0 & pos<1]
+  
+  # Thin out positions by one half
+  # This accounts for recombinations between non-target chromatids
+  keep = rbinom(n=length(pos), size=1, prob=0.5)
+  pos = pos[as.logical(keep)]
+  
+  # Return the positions
+  return(pos)
+}
+
+# Look at distribution of number of recombinations under 
+# Haldane and approximate Kosambi assumptions.
+nHaldaneCO = nKosambiCO = numeric(10000)
+for(i in 1:10000){
+  nHaldaneCO[i] = length( sampleRecomb(v=1) )
+  nKosambiCO[i] = length( sampleRecomb(v=2.6) )
+}
+
+mean(nHaldaneCO)
+mean(nKosambiCO)
+
+hist(nHaldaneCO, breaks = c(-1,0:max(nHaldaneCO))+0.5)
+hist(nKosambiCO, breaks = c(-1,0:max(nKosambiCO))+0.5)
+
+# Show distance between crossovers
+distHaldaneCO = distKosambiCO = vector("list", length=10000)
+for(i in 1:10000){
+  distHaldaneCO[[i]] = diff( sampleRecomb(v=1) )
+  distKosambiCO[[i]] = diff( sampleRecomb(v=2.6) )
+}
+
+distHaldaneCO = do.call("c", distHaldaneCO)
+distKosambiCO = do.call("c", distKosambiCO)
+
+hist(distHaldaneCO)
+hist(distKosambiCO)
+
+```
+
+## AlphaSimR
+
+```{r}
+library(AlphaSimR)
+
+founderPop = quickHaplo(nInd=1, nChr=1, segSites=11, genLen=1)
+
+SP = SimParam$new(founderPop)
+
+# Interference parameter
+SP$v
+
+# Proportion of non-interferring chiasmata
+SP$p
+
+# Genetic map
+getGenMap()
+
+# Turn on recombination tracking option
+SP$setTrackRec(TRUE)
+
+Parent = newPop(founderPop)
+
+A = self(Parent, nProgeny=5)
+
+# Pulling IBD haplotypes
+hap = pullIbdHaplo(A)
+hap
+
+# Function to transpose and flip a matrix for visualizing with
+# the `image` function. See ?image
+tf = function(m) t(m)[, nrow(m):1]
+image(tf(hap), 
+      col = rainbow(2), 
+      useRaster = TRUE,
+      axes = FALSE,
+      xlab = "Locus",
+      ylab = "Haplotype")
+
+```

@@ -1,0 +1,225 @@
+---
+title: "Theory: Polyploids"
+output: html_notebook
+---
+
+This document will show how to simulate polyploids in AlphaSimR and demonstrate several behaviors that are unique to polyploids.
+
+## Simulating polyploids
+
+This script shows how to create polyploids with `runMacs` and how to set the probability of quadrivalent pairing.
+
+```{r}
+library(AlphaSimR)
+
+# Changing ploidy argument in runMacs
+founderPop = runMacs(nInd=100, nChr=10, segSites=1000, 
+                     ploidy=4)
+
+founderPop
+
+SP = SimParam$
+  new(founderPop)$
+  addTraitAD(1000, meanDD=0.2, varDD=0.1)$
+  setVarE(H2=1)
+
+# Variable for probability of quadrivalent pairing
+SP$quadProb
+
+pop = newPop(founderPop)
+
+head(
+  pullMarkerGeno(pop, 
+                 markers=c("1_1", "2_1", "3_1", 
+                           "4_1", "5_1", "6_1")),
+  n=8
+  )
+
+head(
+  pullMarkerHaplo(pop, 
+                  markers=c("1_1", "2_1", "3_1", 
+                            "4_1", "5_1", "6_1")),
+  n=8
+)
+```
+
+## Double reductions
+
+Double reductions result in two copies of a chromosome segment being passed to a gamete. This behavior can only occur in multivalent paring. This script will indirectly show the presence of double reductions by tracking inbreeding depression.
+
+```{r}
+# Create variable to track population means
+muA = muB = numeric(31)
+A = B = pop
+
+# Bivalent pairing only
+SP$quadProb = 0
+
+muA[1] = meanG(A)
+
+for(i in 2:31){
+  A = self(A)
+  muA[i] = meanG(A)
+}
+
+# Quadrivalent pairing only
+SP$quadProb = 1
+
+muB[1] = meanG(B)
+
+for(i in 2:31){
+  B = self(B)
+  muB[i] = meanG(B)
+}
+
+plot(0:30, muA, type="l", 
+     ylab="Mean", xlab="Selfing Generation")
+lines(0:30, muB, col="red")
+
+
+```
+
+## Contribution of digenic dominance to response to selection
+
+The digenic dominance in polyploids behaves similarly to additive-by-additive genetic variance with respect to response to selection. This will be demonstrated in the below script.
+
+```{r}
+founderPop = quickHaplo(nInd=1000, nChr=10, 
+                        segSites=1000, ploidy=4)
+
+SP = SimParam$
+  new(founderPop)$
+  addTraitAD(1000, varDD=2)$
+  setVarE(H2=1)
+
+pop = newPop(founderPop)
+
+varA(pop)
+varD(pop)
+
+pop2 = selectCross(pop, nInd=100, nCrosses=1000)
+
+# Observed response to selection
+meanG(pop2) - meanG(pop)
+
+# Expected response without digenic dominance
+selInt(p=0.1) * varA(pop) / sqrt(varP(pop))
+
+# Expected response with digenic dominance in an unselected population
+selInt(p=0.1) * (varA(pop) + (1/3)*varD(pop)) / sqrt(varP(pop))
+
+# Repeat measurement after multiple rounds of selecton
+for(i in 1:10){
+  pop = selectCross(pop, nInd=100, nCrosses=1000)
+}
+
+pop2 = selectCross(pop, nInd=100, nCrosses=1000)
+
+# Observed response to selection
+meanG(pop2) - meanG(pop)
+
+# Expected response without digenic dominance
+selInt(p=0.1) * varA(pop) / sqrt(varP(pop))
+
+# Expected response with digenic dominance in an unselected population
+selInt(p=0.1) * (varA(pop) + (1/3)*varD(pop)) / sqrt(varP(pop))
+
+```
+
+## Progressive heterosis
+
+The below script will demonstrate the occurrence of progressive heterosis in tetraploids and its absence in diploids. This script comes from the AlphaSimR_Examples GitHub repository. It uses 100 replications, because progressive heterosis is not as reliably present as many of the other properties that have been presented.
+
+```{r}
+het2sc = het4sc = het2dc = het4dc = numeric(100)
+for(REP in 1:100){
+  founderPop = quickHaplo(nInd=400, nChr=4, segSites=100, ploidy=4)
+  
+  SP = SimParam$
+    new(founderPop)$
+    addTraitAD(100, meanDD=0.6, varDD=0.2)$
+    setVarE(h2=0.3)
+  
+  # Create 4 tetraploid populations
+  tetraploid = vector("list", 4)
+  tetraploid[[1]] = newPop(founderPop[1:100])
+  tetraploid[[2]] = newPop(founderPop[101:200])
+  tetraploid[[3]] = newPop(founderPop[201:300])
+  tetraploid[[4]] = newPop(founderPop[301:400])
+  
+  # Create diploid populations from tetraploid populations
+  diploid = vector("list", 4)
+  for(i in 1:4){
+    diploid[[i]] = reduceGenome(tetraploid[[i]])
+  }
+  
+  # Perform 5 generations of recurrent selection
+  for(gen in 1:5){ 
+    for(i in 1:4){
+      tetraploid[[i]] = selectCross(tetraploid[[i]], nInd=10, nCrosses=100)
+      diploid[[i]] = selectCross(diploid[[i]], nInd=10, nCrosses=100)
+    }
+  }
+  
+  # Create single cross populations (1/2 and 3/4)
+  tetraSC = list(randCross2(tetraploid[[1]], tetraploid[[2]], nCrosses=100),
+                 randCross2(tetraploid[[3]], tetraploid[[4]], nCrosses=100))
+  diploidSC = list(randCross2(diploid[[1]], diploid[[2]], nCrosses=100),
+                   randCross2(diploid[[3]], diploid[[4]], nCrosses=100))
+  
+  # Create double cross populations
+  tetraDouble = randCross2(tetraSC[[1]], tetraSC[[2]], nCrosses=1000)
+  diploidDouble = randCross2(diploidSC[[1]], diploidSC[[2]], nCrosses=1000)
+  
+  # Calculate mean of all base populations
+  meanTetra = mean(unlist(lapply(tetraploid,meanG)))
+  meanDiploid = mean(unlist(lapply(diploid,meanG)))
+  
+  # Calculate mean of single cross populations
+  meanTetraSC = mean(unlist(lapply(tetraSC,meanG)))
+  meanDiploidSC = mean(unlist(lapply(diploidSC,meanG)))
+  
+  # Measure single cross heterosis
+  het4sc[REP] = meanTetraSC - meanTetra
+  het2sc[REP] = meanDiploidSC - meanDiploid
+  
+  # Measure double cross heterois
+  het4dc[REP] = meanG(tetraDouble) - meanTetra 
+  het2dc[REP] = meanG(diploidDouble) - meanDiploid 
+}
+boxplot(het2dc,het2sc,het4dc,het4sc, 
+        names=c("Diploid D", "Diploid S",
+                "Tetraploid D", "Tetraploid S"),
+        las=2,
+        main="Single (S) vs Double (D) Cross Means")
+boxplot(het2dc-het2sc,het4dc-het4sc, 
+        names=c("Diploid", "Tetraploid"),
+        las=2,
+        main="Progressive Heterosis")
+
+```
+
+## Other polyploid behaviors
+
+```{r}
+founderPop = quickHaplo(nInd=100, nChr=10, 
+                        segSites=1000)
+
+SP = SimParam$
+  new(founderPop)$
+  addTraitAD(1000, meanDD=0.6)
+
+diploid = newPop(founderPop)
+
+# Create tetraploids from diploids
+tetraploid = doubleGenome(diploid)
+tetraploid2 = randCross(tetraploid, 1000)
+
+# Polyploids produced by doubling are partially inbred (not HWE)
+meanG(tetraploid2) - meanG(tetraploid)
+
+# You can cross different ploidy levels
+triploid = randCross2(diploid, tetraploid, 1000)
+
+# Odd ploidy levels are dead ends
+```

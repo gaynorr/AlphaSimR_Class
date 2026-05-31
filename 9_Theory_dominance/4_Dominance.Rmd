@@ -1,0 +1,69 @@
+---
+title: "Theory: Dominance Effects, Part 3"
+output: html_notebook
+---
+
+The document will demonstrate the use of a new function for defining traits with dominance effects by supplying inbreeding depression and dominance variance. The function uses R's `optim` function to attempt to find values for mean and variance of dominance degrees that satisfy the user's request subject to limits on the range of these values. If a solution is not found, the closest solution is return. This function has not been thoroughly tested and is still somewhat experimental.
+
+```{r}
+library(AlphaSimR)
+
+founderPop = runMacs(nInd=1000, nChr=10, segSites=1000)
+
+SP = SimParam$new(founderPop)
+
+# New function for specifying a trait with dominance effects
+SP$altAddTraitAD(nQtlPerChr = 1000, 
+                 mean = 0, 
+                 varA = 1, 
+                 varD = 0.2, 
+                 inbrDepr = 2)
+
+
+pop = newPop(founderPop)
+
+gp = genParam(pop)
+
+gp$varA
+
+gp$varD
+
+# Inbreeding depression (F=current - F=1)
+mean(gp$gv_d) - gp$mu 
+
+# Inbreeding depression (F=0 - F=1)
+# This is the definition of inbreeding depression used in the function above
+mean(gp$gv_d) - gp$mu + gp$mu_HW
+
+# Manually compute inbreeding depression (F=0 - F=1)
+p = colMeans( pullQtlGeno(pop) ) / 2
+q = 1-p
+d = SP$traits[[1]]@domEff
+
+sum(2*p*q*d)
+
+```
+
+The below script shows how changing the number of QTL may be necessary to achieve a desired scenario.
+
+```{r}
+founderPop = runMacs(nInd=1000, nChr=10, segSites=1000)
+
+SP = SimParam$new(founderPop)
+
+SP$altAddTraitAD(nQtlPerChr = 100, 
+                 mean = 0, 
+                 varA = 1, 
+                 varD = 0.3, 
+                 inbrDepr = 10, 
+                 limMeanDD = c(0, 0.6), 
+                 limVarDD = c(0, 0.5))
+
+SP$altAddTraitAD(nQtlPerChr = 1000, 
+                 mean = 0, 
+                 varA = 1, 
+                 varD = 0.3, 
+                 inbrDepr = 10, 
+                 limMeanDD = c(0, 0.6), 
+                 limVarDD = c(0, 0.5))
+```

@@ -1,0 +1,161 @@
+---
+title: "Theory: Dominance Effects, Part 1"
+output: html_notebook
+---
+
+This document will show how to specify traits with dominance in AlphaSimR. It will also introduce how the choice dominance degree of parameters effects dominance variance and inbreeding depression, before concluding with a demonstration of the properties of breeding values.
+
+## Specifying a trait with dominance
+
+The below script shows how to specify a trait with dominance in AlphaSimR and shows how dominance degree information can be accessed.
+
+```{r}
+library(AlphaSimR)
+
+founderPop = quickHaplo(nInd=100, nChr=10, segSites=1000)
+
+SP = SimParam$
+  new(founderPop)$
+  addTraitAD(nQtlPerChr=1000,
+             meanDD=0.2,
+             varDD=0.1)$
+  setVarE(H2=1)
+
+pop = newPop(founderPop)
+
+# Examine the partitioning of genetic variance
+varG(pop)
+varA(pop) # Set to 1 by SimParam defaults
+varD(pop)
+
+# Access the additive and dominance effects and back-solve for dominance degree
+a = SP$traits[[1]]@addEff
+d = SP$traits[[1]]@domEff
+delta = d/abs(a)
+
+mean(delta)
+var(delta)
+hist(delta)
+```
+
+## Inbreeding depression
+
+The below code demonstrates inbreeding depression using a single generation of selfing.
+
+```{r}
+pop2 = self(pop)
+
+meanG(pop2)
+```
+
+Directional dominance ($\mu_\delta>0$) is required for the presence of inbreeding depression. This is showed below first by using a simulation without directional dominance show the absence of inbreeding depression.
+
+```{r}
+# Assign variables to store 
+domVar = meanSelf = numeric(100)
+
+# Perform 100 replicates of the above selfing experiment without directional dominance
+# The variance of dominance degree is set to a high value for high dominance variance
+for(i in 1:100){
+  founderPop = quickHaplo(nInd=100, nChr=10, segSites=1000)
+  
+  SP = SimParam$
+    new(founderPop)$
+    addTraitAD(nQtlPerChr=1000,
+               meanDD=0,
+               varDD=2)$
+    setVarE(H2=1)
+  
+  pop = newPop(founderPop)
+  
+  pop2 = self(pop)
+  
+  domVar[i] = varD(pop)
+  meanSelf[i] = meanG(pop2)
+}
+
+# Plot a histogram for dominance variance
+hist(domVar, 
+     main="Dominance variance Gen 0",
+     xlab="Dominance variance")
+
+# Plot a histogram for inbreeding depression
+hist(meanSelf, 
+     main="Mean after selfing",
+     xlab="Mean genetic value")
+```
+
+The script below shows the presence of directional dominance results in inbreeding depression. This happens even though dominance genetic variance is considerably lower in this second scenario.
+
+```{r}
+# Assign variable to store the mean and variance
+domVar = meanSelf = numeric(100)
+
+# Perform 100 replicates of the selfing experiment using modest directional dominance
+for(i in 1:100){
+  founderPop = quickHaplo(nInd=100, nChr=10, segSites=1000)
+  
+  SP = SimParam$
+    new(founderPop)$
+    addTraitAD(nQtlPerChr=1000,
+               meanDD=0.2,
+               varDD=0)$
+    setVarE(H2=1)
+  
+  pop = newPop(founderPop)
+  
+  pop2 = self(pop)
+  
+  domVar[i] = varD(pop)
+  meanSelf[i] = meanG(pop2)
+}
+
+hist(domVar, 
+     main="Dominance variance Gen 0",
+     xlab="Dominance variance")
+
+hist(meanSelf, 
+     main="Mean after selfing",
+     xlab="Mean genetic value")
+
+```
+
+## Demonstrate breeding value properties
+
+The below code shows the relationship between progeny testing and breeding values under ideal circumstances. The resulting plots illustrate why it is said that parents contribute half of their breeding value to their progeny.
+
+```{r}
+founderPop = quickHaplo(nInd=100, nChr=10, segSites=1000)
+
+SP = SimParam$
+  new(founderPop)$
+  addTraitAD(nQtlPerChr=1000,
+             meanDD=0.2,
+             varDD=0.6,
+             mean=10)$
+  setVarE(H2=1)
+
+pop = newPop(founderPop)
+
+# Plot breeding value against genetic value
+plot(gv(pop), bv(pop),
+     xlab="Genetic Value",
+     ylab="Breeding Value")
+
+# Assign phenotypes consistent with a progeny test
+# Using a large number of mating high accuracy
+pop = setPhenoProgTest(pop=pop, 
+                       testPop=pop, 
+                       nMatePerInd=100)
+
+# Plot genetic value against progeny test means
+plot(pheno(pop), gv(pop),
+     xlab="Progeny Test Mean",
+     ylab="Genetic Value")
+
+# Plot breeding value against progeny test means
+plot(pheno(pop), bv(pop), 
+     xlab="Progeny Test Mean",
+     ylab="Breeding Value")
+
+```

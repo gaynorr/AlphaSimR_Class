@@ -1,0 +1,323 @@
+---
+title: "Theory: Epistatic Effects"
+output: html_notebook
+---
+
+This document will attempt to demonstrate the five behaviors caused by epistasis described in the lecture.
+
+## Griffing effect
+
+The below script will show how additive-by-additive epistasis contributes to response to selection in an unselected population and how this response diminishes in subsequent generations.
+
+```{r}
+library(AlphaSimR)
+
+founderPop = quickHaplo(nInd=1000, nChr=10, segSites=1000)
+
+# Setting a trait with strong epistasis
+SP = SimParam$
+  new(founderPop)$
+  addTraitAE(1000, relAA=1)$
+  setVarE(H2=1)
+
+pop = newPop(founderPop)
+
+varA(pop)
+varAA(pop)
+
+pop2 = selectCross(pop, nInd=100, nCrosses=1000)
+
+# Observed response to selection
+meanG(pop2) - meanG(pop)
+
+# Response expected from standard breeders equation
+selInt(p=0.1) * varA(pop) / sqrt(varP(pop))
+
+# Response expected from the Griffing effect and no prior selection
+selInt(p=0.1) * (varA(pop) + 0.5*varAA(pop)) / sqrt(varP(pop))
+
+# Repeat measurement after multiple rounds of selection
+for(i in 1:10){
+  pop = selectCross(pop, nInd=100, nCrosses=1000)
+}
+
+pop2 = selectCross(pop, nInd=100, nCrosses=1000)
+
+# Observed response to selection
+meanG(pop2) - meanG(pop)
+
+# Response expected from standard breeders equation
+selInt(p=0.1) * varA(pop) / sqrt(varP(pop))
+
+# Response expected from the Griffing effect and no prior selection
+selInt(p=0.1) * (varA(pop) + 0.5*varAA(pop)) / sqrt(varP(pop))
+```
+
+## "Conversion" of epistatic variance
+
+This script will show how additive genetic variance can increase due to epistatic effects. This property is due to drift, so the experiment will be performed using populations of two different sizes. This example comes from the AlphaSimR_Examples repository on GitHub.
+
+```{r}
+library(ggplot2)
+
+## User set variances
+# VarA = 1, always
+VarD = 1 
+VarAA = 1
+VarE = 1
+n = 1000 # Population size, must be divisible by 10
+# Note that conversion is due to drift, so it occurs
+# sooner in smaller populations
+
+## Simulation
+founderPop = quickHaplo(nInd=n,nChr=10,segSites=100)
+
+SP = SimParam$
+  new(founderPop)$
+  addTraitADE(100, varDD=VarD*2, relAA=VarAA)$
+  setVarE(varE=VarE)
+
+pop = newPop(founderPop)
+MEAN = VARG = VARA = VARD = VARAA = numeric(101)
+
+tmp = genParam(pop)
+MEAN[1] = tmp$mu
+VARG[1] = tmp$varG
+VARA[1] = tmp$varA
+VARD[1] = tmp$varD
+VARAA[1] = tmp$varAA
+
+for(i in 2:101){
+  pop = selectCross(pop,n*0.1,nCrosses=n)
+  tmp = genParam(pop)
+  MEAN[i] = tmp$mu
+  VARG[i] = tmp$varG
+  VARA[i] = tmp$varA
+  VARD[i] = tmp$varD
+  VARAA[i] = tmp$varAA
+}
+
+df = data.frame(Cycle=rep(0:100,4),
+                Source=rep(c("Vg","Va","Vd","Vaa"),each=101),
+                Variance=c(VARG,VARA,VARD,VARAA))
+
+ggplot(df,aes(x=Cycle, y=Variance, color=Source))+
+  geom_line(linewidth=1)+
+  guides(alpha="none")+
+  theme_bw()
+
+df2 = data.frame(Cycle=0:100,
+                 Mean=MEAN)
+
+ggplot(df2,aes(x=Cycle,y=Mean))+
+  geom_line(linewidth=1)+
+  guides(alpha="none")+
+  theme_bw()
+
+
+### Rerunning the simulation with a smaller population
+
+## User set variances
+# VarA = 1, always
+VarD = 1 
+VarAA = 1
+VarE = 1
+n = 100 # Population size, must be divisible by 10
+# Note that conversion is due to drift, so it occurs
+# sooner in smaller populations
+
+## Simulation
+founderPop = quickHaplo(nInd=n,nChr=10,segSites=100)
+
+SP = SimParam$
+  new(founderPop)$
+  addTraitADE(100, varDD=VarD*2, relAA=VarAA)$
+  setVarE(varE=VarE)
+
+pop = newPop(founderPop)
+MEAN = VARG = VARA = VARD = VARAA = numeric(101)
+
+tmp = genParam(pop)
+MEAN[1] = tmp$mu
+VARG[1] = tmp$varG
+VARA[1] = tmp$varA
+VARD[1] = tmp$varD
+VARAA[1] = tmp$varAA
+
+for(i in 2:101){
+  pop = selectCross(pop,n*0.1,nCrosses=n)
+  tmp = genParam(pop)
+  MEAN[i] = tmp$mu
+  VARG[i] = tmp$varG
+  VARA[i] = tmp$varA
+  VARD[i] = tmp$varD
+  VARAA[i] = tmp$varAA
+}
+
+df = data.frame(Cycle=rep(0:100,4),
+                Source=rep(c("Vg","Va","Vd","Vaa"),each=101),
+                Variance=c(VARG,VARA,VARD,VARAA))
+
+ggplot(df,aes(x=Cycle, y=Variance, color=Source))+
+  geom_line(linewidth=1)+
+  guides(alpha="none")+
+  theme_bw()
+
+df2 = data.frame(Cycle=0:100,
+                 Mean=MEAN)
+
+ggplot(df2,aes(x=Cycle,y=Mean))+
+  geom_line(linewidth=1)+
+  guides(alpha="none")+
+  theme_bw()
+```
+
+## Hybrid depression
+
+This script will show how epistasis can contribute to hybrid depression. Hybrid depression is when the mean of the hybrid is less the two parental populations. The simulation will create favorable conditions for this phenomenon by breeding two population separately in the presence of strong epistasis and the absence of dominance. Favorable epistatic combinations will build up in each population that will only partially be transmitted to the hybrids.
+
+```{r}
+founderPop = runMacs(nInd=200, nChr=10, segSites=1000,
+                     split=100, inbred=TRUE)
+
+SP = SimParam$
+  new(founderPop[1:100])$
+  addTraitAE(1000, relAA=1)$
+  setVarE(H2=1)
+
+A = newPop(founderPop[1:100])
+B = newPop(founderPop[101:200])
+
+A = makeDH( randCross(A, 1000) )
+B = makeDH( randCross(B, 1000) )
+F1 = randCross2(A, B, nCrosses=10000)
+
+# Create variable for midparent and F1 means
+meanMidPar = meanF1 = numeric(20)
+
+meanMidPar[1] = (meanG(A)+meanG(B))/2
+meanF1[1] = meanG(F1)
+
+# Reciprical recurrent selection
+for(i in 2:20){
+  A = makeDH( selectCross(A, nInd=100, nCrosses=1000) )
+  B = makeDH( selectCross(B, nInd=100, nCrosses=1000) )
+  F1 = randCross2(A, B, nCrosses=10000)
+  
+  meanMidPar[i] = (meanG(A)+meanG(B))/2
+  meanF1[i] = meanG(F1)
+}
+
+# Plot midparent (black) and F1 (red) means over time
+plot(1:20, meanMidPar, type="l",
+     xlab="Generation",
+     ylab="Genetic Value")
+lines(1:20, meanF1, col="red")
+```
+
+## Hybrid depression
+
+The below script will attempt (and fail) to show heterosis due to epistatic interactions. It is similar to the above script, but uses reciprocal recurrent selection to attempt to build favorable epistatic interaction between the populations.
+
+```{r}
+founderPop = runMacs(nInd=200, nChr=10, segSites=1000,
+                     split=100, inbred=TRUE)
+
+SP = SimParam$
+  new(founderPop[1:100])$
+  addTraitAE(1000, relAA=1)$
+  setVarE(H2=1)
+
+A = newPop(founderPop[1:100])
+B = newPop(founderPop[101:200])
+
+A = makeDH( randCross(A, 1000) )
+B = makeDH( randCross(B, 1000) )
+F1 = randCross2(A, B, nCrosses=10000)
+
+# Create variable for midparent and F1 means
+meanMidPar = meanF1 = numeric(20)
+
+meanMidPar[1] = (meanG(A)+meanG(B))/2
+meanF1[1] = meanG(F1)
+
+# Reciprocal recurrent selection using random testers
+for(i in 2:20){
+  A = setPhenoGCA(A, testers=B[sample(1000,10)], inbred=TRUE)
+  B = setPhenoGCA(B, testers=A[sample(1000,10)], inbred=TRUE)
+  
+  A = makeDH( selectCross(A, nInd=100, nCrosses=1000) )
+  B = makeDH( selectCross(B, nInd=100, nCrosses=1000) )
+  F1 = randCross2(A, B, nCrosses=10000)
+  
+  meanMidPar[i] = (meanG(A)+meanG(B))/2
+  meanF1[i] = meanG(F1)
+}
+
+# Plot midparent (black) and F1 (red) means over time
+plot(1:20, meanMidPar, type="l",
+     xlab="Generation",
+     ylab="Genetic Value")
+lines(1:20, meanF1, col="red")
+```
+
+## Epistatic decay
+
+This script will show how stabilizing selection on component traits can explain progeny means being below the midparent values for elite parents. This script also shows how complex epistasis can be modeled using nonlinear interactions between component traits.
+
+```{r}
+# Function for modeling epistasis as one component trait under
+# directional selection and the rest under stabilizing selection.
+specialSelect = function(X){
+  Y = X[,1] - rowSums( abs(X[,-1]) )
+}
+
+founderPop = quickHaplo(nInd=1000, nChr=10, segSites=1000, 
+                        inbred=TRUE)
+
+# Simulating multiple traits to serve as component traits
+SP = SimParam$
+  new(founderPop)$
+  addTraitA(1000, 
+            mean = c(100, rep(0,10)),
+            var = rep(1,11),
+            corA = diag(11))$
+  setVarE(H2 = rep(1,11))
+
+pop = newPop(founderPop)
+
+hist(specialSelect( gv(pop) ),
+     main = "Histogram of Special Trait",
+     xlab = "Special Trait")
+
+# Five generations of breeding
+for(i in 1:5){
+  pop = selectCross(pop, nInd=100, nCrosses=1000,
+                    trait=specialSelect)
+  pop = makeDH(pop)
+}
+
+# Select parents and make biparental crosses
+parents = selectInd(pop, nInd=3, trait=specialSelect)
+
+progeny12 = makeCross(parents, crossPlan=cbind(1,2))
+progeny12 = makeDH(progeny12, nDH=100)
+
+progeny13 = makeCross(parents, crossPlan=cbind(1,3))
+progeny13 = makeDH(progeny13, nDH=100)
+
+progeny23 = makeCross(parents, crossPlan=cbind(2,3))
+progeny23 = makeDH(progeny23, nDH=100)
+
+# Measure GV
+gvPar = specialSelect(gv(parents))
+gvProg12 = specialSelect(gv(progeny12))
+gvProg13 = specialSelect(gv(progeny13))
+gvProg23 = specialSelect(gv(progeny23))
+
+# Measure difference between midparent and progeny mean
+mean(gvPar[1:2]) - mean(gvProg12)
+mean(gvPar[c(1,3)]) - mean(gvProg13)
+mean(gvPar[2:3]) - mean(gvProg23)
+
+```
