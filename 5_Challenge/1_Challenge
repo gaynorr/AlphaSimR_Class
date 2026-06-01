@@ -1,0 +1,14 @@
+You have been provided with a complete simulation for a simple clonal breeding 
+program. You are tasked with increasing genetic gain by finding a better 
+strategy for selecting parents and/or crosses when developing F1s. You cannot 
+change any other aspect of the breeding program. 
+
+You can use the phenotypes in the pheno slot and the pedigree in SP to aid in 
+parent selection. Feel free to modify the simulation script to store historic 
+phenotypes if you so choose. 
+
+You can change the number of crosses (nCrosses) and the number of seedlings 
+(nSeedlings), but nCrosses times nSeedlings must equal 1000.
+
+You may not use the true genetic values in gv or the genotypes to aid in 
+selecting parents. We are assuming these are unknown.

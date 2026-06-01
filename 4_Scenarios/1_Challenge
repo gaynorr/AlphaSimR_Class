@@ -1,0 +1,11 @@
+I'll walk you through a full simulation with two scenarios: "BASELINE" and "AYTxEYT"
+
+You need to add the following two scenarios:
+
+"AYT" crosses are made using only AYT individuals
+
+"PYTxAYT" crosses are made between PYT and AYT individuals
+
+Be sure to add these scenarios to ANALYZE_RESULTS.R and generate plots
+
+If you have extra time, create your own scenarios. Feel free to change anything.
