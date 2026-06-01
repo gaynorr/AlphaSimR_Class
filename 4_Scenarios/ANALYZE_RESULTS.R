@@ -3,7 +3,7 @@ library(dplyr)
 library(ggplot2)
 
 #Read in results and collapse to a single data.frame
-scenarios = c("BASELINE", "AYTxEYT")
+scenarios = c("BASELINE", "2LOC")
 reps = 1:5
 
 allRuns = expand.grid(scenarios=scenarios, reps=reps)

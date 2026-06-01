@@ -1,3 +1,5 @@
+rm(list=ls())
+
 library(AlphaSimR)
 
 # Number of crosses per year

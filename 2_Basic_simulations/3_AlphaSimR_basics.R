@@ -80,27 +80,103 @@ cor( gv(pop) )
 
 # Working with populations ----
 
+founderPop = quickHaplo(100, 10, 100)
+
+SP = SimParam$
+  new(founderPop)$
+  addTraitA(100)$
+  setVarE(h2=0.5)
+
+pop = newPop(founderPop)
+
+pop
+
 # c() and []
+c(pop, pop)
+pop[1:10]
+
+A = pop[1:10]
+B = pop[11:20]
+C = c(A,B)
 
 # pheno, gv
+pop@pheno
+pheno(pop)
+
+cor(gv(pop), pheno(pop))
 
 # meanG, varG
 
+meanG(pop)
+
+varG(pop)
+
 # genParam
 
+gp = genParam(pop)
+?genParam
+
+# additive variance from genParam
+varA(pop)
+
+
+
+# Crossing ----
+
+founderPop = quickHaplo(100, 10, 100)
+
+SP = SimParam$
+  new(founderPop)$
+  addTraitA(100)$
+  setVarE(h2=0.5)
+
+pop = newPop(founderPop)
+
+# randCross, randCross2, makeCross, makeCross2
+F1 = randCross(pop, nCrosses=100)
+
+TopCross = randCross2(females=F1, males=pop, nCrosses=100)
+
+?makeCross
+
+crossPlan = cbind(c(1, 1), c(2, 3))
+crossPlan
+A = makeCross(pop, crossPlan = crossPlan)
+A
+A@mother
+A@father
+
+# Alternative crossPlan using names
+crossPlan = cbind(c("1", "1"), c("2", "3"))
+B = makeCross(pop, crossPlan = crossPlan)
+B@mother
+B@father
+
+
+# makeCross2
+crossPlan = cbind(c(1,1), c(2,3))
+C = makeCross2(females=pop, males=F1, crossPlan=crossPlan)
+C@mother
+C@father
+
+# self, makeDH
+F2 = self(F1, nProgeny=5)
+head(pullQtlGeno(F2))
+
+DH = makeDH(F1, nDH=5)
+pullQtlGeno(DH)
 
 
 # Selection ----
 
 # selectInd, selectWithinFam, selectFam
 
+?selectInd
+selectInd(pop, nInd=10)
 
+?selectWithinFam
+F2
+F2_selected = selectWithinFam(F2, nInd=1)
 
-# Crossing ----
-
-# randCross, randCross2, makeCross, makeCross2
-
-# self, makeDH
-
-
+selectFam(F2, nFam=10)
 
