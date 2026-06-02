@@ -1,5 +1,4 @@
 # A demonstration of using a selection index
-library(AlphaSimR)
 
 ## Initial parameters
 # Genetic correlation matrix

@@ -12,3 +12,8 @@ You can change the number of crosses (nCrosses) and the number of seedlings
 
 You may not use the true genetic values in gv or the genotypes to aid in 
 selecting parents. We are assuming these are unknown.
+
+
+Access the pedigree this way:
+pedigree = SP$pedigree
+rows in pedigree match iid in population

@@ -38,7 +38,7 @@ for(REP in 1:5){
   #Set initial yield trials with unique individuals
   for(year in 1:6){
     # Crossing
-    F1 = randCross(Parents, nCrosses=nCrosses, nProgeny=nSeedling)
+    F1 = randCross(Parents, nCrosses=nCrosses, nProgeny=nSeedlings)
     
     if(year<6){
       # INC, increase of F1s (no phenotype)
@@ -91,7 +91,7 @@ for(REP in 1:5){
     
     # PYT
     PYT = INC
-    PYT = setPheno(PYT, reps=repPYT, varE)
+    PYT = setPheno(PYT, reps=repPYT, varE=varE)
     
     # INC
     INC = F1

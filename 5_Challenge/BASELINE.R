@@ -13,7 +13,9 @@ for(REP in 1:5){
     
     ### Pick your parents here, so you don't use phenotypes that wouldn't 
     ### be available. You can have more than 1 parent population.
-    Parents = c(EYT1, selectInd(AYT, nEYT), selectInd(PYT, nAYT))
+    Parents = c(EYT1, 
+                selectInd(AYT, nEYT), 
+                selectInd(PYT, nAYT))
     
     
     
@@ -30,7 +32,7 @@ for(REP in 1:5){
     
     # PYT
     PYT = INC
-    PYT = setPheno(PYT, reps=repPYT, varE)
+    PYT = setPheno(PYT, reps=repPYT, varE=varE)
     
     # INC
     INC = F1
