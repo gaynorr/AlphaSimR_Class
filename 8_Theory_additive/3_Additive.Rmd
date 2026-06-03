@@ -123,7 +123,7 @@ SP = SimParam$
 pop = newPop(founderPop)
 
 # Creating variables to store genic and genetic variance
-genicVar = geneticVar = numeric(40)
+genicVar = geneticVar = numeric(80)
 
 # Calculate initial variances
 gp = genParam(pop)
@@ -139,7 +139,7 @@ for(i in 2:20){
   geneticVar[i] = gp$varA[1]
 }
 
-# Subject the population to 20 rounds of random mating
+# Subject the population to 60 rounds of random mating
 for(i in 21:80){
   pop = selectCross(pop, nInd=100, nCrosses=1000, use="rand")
   
@@ -150,11 +150,11 @@ for(i in 21:80){
 
 # Plot the change in both variances over time
 # Genetic (black) and genic (red)
-plot(1:40, geneticVar, type="l",
+plot(1:80, geneticVar, type="l",
      ylim=c(0, 1.1),
      xlab="Generation",
      ylab="Variance")
-lines(1:40, genicVar, col="red")
+lines(1:80, genicVar, col="red")
 ```
 
 ### Multitrait example
@@ -176,7 +176,7 @@ SP = SimParam$
 pop = newPop(founderPop)
 
 # Creating a variable to store genetic correlation
-corr = numeric(40)
+corr = numeric(80)
 
 # Measure initial correlation
 gp = genParam(pop)

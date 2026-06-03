@@ -215,7 +215,7 @@ plot(1:20, meanMidPar, type="l",
 lines(1:20, meanF1, col="red")
 ```
 
-## Hybrid depression
+## Heterosis
 
 The below script will attempt (and fail) to show heterosis due to epistatic interactions. It is similar to the above script, but uses reciprocal recurrent selection to attempt to build favorable epistatic interaction between the populations.
 
